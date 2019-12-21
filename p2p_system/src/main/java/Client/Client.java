@@ -7,20 +7,20 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Client
 {
     private static final int SERVER_PORT = 10000;
+    private final String SERVER_IP;
 
     // start client side server, keep it running
     // probably need thread control
-    public Client()
+    public Client(String serverIp)
     {
+        SERVER_IP = serverIp;
         new Thread(new ClientResponse()).start();
     }
 
@@ -92,10 +92,17 @@ public class Client
         return success;
     }
 
-    private String getIP() throws UnknownHostException
+    // should get preferred outbound IP
+    public String getIP() throws  UnknownHostException
     {
-        InetAddress inetAddress = InetAddress.getLocalHost();
-        return inetAddress.getHostAddress();
+        String ip = "";
+        try(final DatagramSocket socket = new DatagramSocket())
+        {
+            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+            ip = socket.getLocalAddress().getHostAddress();
+        }
+        catch (SocketException  e) { e.printStackTrace(); }
+        return ip;
     }
 
     private FileMetadata createFileData(String clientName, String filePath, String fileName) throws UnknownHostException
@@ -116,7 +123,7 @@ public class Client
 
         try
         {
-            socket = new Socket(getIP(), SERVER_PORT);
+            socket = new Socket(SERVER_IP, SERVER_PORT);
             oos = new ObjectOutputStream(socket.getOutputStream());
             oos.writeObject(request);
             oos.flush();
